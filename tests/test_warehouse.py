@@ -12,9 +12,8 @@ import glob
 import os
 from datetime import date
 
-import pytest
-
 import psycopg2  # noqa: E402
+import pytest
 
 MIGRATIONS = sorted(glob.glob(os.path.join("migrations", "*.sql")))
 
@@ -29,11 +28,11 @@ def conn():
     so this never touches your real curated/staging data, then drop them after.
     """
     dsn = (
-        f"host={os.getenv('WAREHOUSE_HOST','localhost')} "
-        f"port={os.getenv('WAREHOUSE_PORT','5432')} "
-        f"dbname={os.getenv('WAREHOUSE_DB','meridian')} "
-        f"user={os.getenv('WAREHOUSE_USER','meridian')} "
-        f"password={os.getenv('WAREHOUSE_PASSWORD','')}"
+        f"host={os.getenv('WAREHOUSE_HOST', 'localhost')} "
+        f"port={os.getenv('WAREHOUSE_PORT', '5432')} "
+        f"dbname={os.getenv('WAREHOUSE_DB', 'meridian')} "
+        f"user={os.getenv('WAREHOUSE_USER', 'meridian')} "
+        f"password={os.getenv('WAREHOUSE_PASSWORD', '')}"
     )
     connection = psycopg2.connect(dsn)
     connection.autocommit = True
@@ -50,8 +49,12 @@ def conn():
     for path in MIGRATIONS:
         with open(path) as fh:
             sql = fh.read()
-        for real, test in [("staging.", "test_staging."), ("curated.", "test_curated."),
-                            ("marts.", "test_marts."), ("audit.", "test_audit.")]:
+        for real, test in [
+            ("staging.", "test_staging."),
+            ("curated.", "test_curated."),
+            ("marts.", "test_marts."),
+            ("audit.", "test_audit."),
+        ]:
             sql = sql.replace(real, test)
         cur.execute(sql)
 
@@ -153,8 +156,7 @@ def test_initial_load_inserts_current_row(conn):
     with conn.cursor() as cur:
         cur.execute("CALL merge_dim_customer(DATE '2024-01-01', TRUE)")
         cur.execute(
-            "SELECT segment, is_current, valid_to FROM dim_customer "
-            "WHERE customer_id='CUST_TEST01'"
+            "SELECT segment, is_current, valid_to FROM dim_customer WHERE customer_id='CUST_TEST01'"
         )
         rows = cur.fetchall()
     assert len(rows) == 1
@@ -250,8 +252,6 @@ def test_validity_windows_never_overlap(conn):
 def test_null_handling_in_row_hash(conn):
     """A NULL attribute must not blank the hash and break change detection."""
     with conn.cursor() as cur:
-        cur.execute(
-            "SELECT customer_row_hash('A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)"
-        )
+        cur.execute("SELECT customer_row_hash('A', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)")
         value = cur.fetchone()[0]
     assert value is not None and len(value) == 32

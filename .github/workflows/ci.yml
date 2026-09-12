@@ -21,6 +21,23 @@ jobs:
     # Spins up a real PostgreSQL and applies every migration, then runs the
     # SCD2 behaviour tests against it. Schema changes cannot merge if they break.
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meridian
+          POSTGRES_PASSWORD: meridian
+          POSTGRES_DB: meridian
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      WAREHOUSE_HOST: localhost
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_DB: meridian
+      WAREHOUSE_USER: meridian
+      WAREHOUSE_PASSWORD: meridian
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
