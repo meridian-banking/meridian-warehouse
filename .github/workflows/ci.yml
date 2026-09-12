@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff==0.5.0
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+
+  test:
+    # Spins up a real PostgreSQL and applies every migration, then runs the
+    # SCD2 behaviour tests against it. Schema changes cannot merge if they break.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+
+  migrations-apply-cleanly:
+    # A migration that does not apply to an EMPTY database is broken, even if it
+    # happens to work against a developer's existing one.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meridian
+          POSTGRES_PASSWORD: meridian
+          POSTGRES_DB: meridian
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply all migrations in order
+        env:
+          PGPASSWORD: meridian
+        run: |
+          psql -h localhost -U meridian -d meridian -v ON_ERROR_STOP=1 -c \
+            "CREATE SCHEMA staging; CREATE SCHEMA curated; CREATE SCHEMA marts; CREATE SCHEMA audit;"
+          for f in migrations/*.sql; do
+            echo "applying $f"
+            psql -h localhost -U meridian -d meridian -v ON_ERROR_STOP=1 -f "$f"
+          done
