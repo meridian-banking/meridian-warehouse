@@ -78,3 +78,6 @@ Tests use `pgserver` (embedded PostgreSQL) rather than mocks, because partial un
 CI additionally applies every migration to an **empty** PostgreSQL, because a migration that only works against a developer's existing database is broken.
 
 Part of the 8-repository Meridian platform.
+
+
+_Verified locally: SCD Type 2 confirmed live — a customer's segment change correctly closed the old row and opened a new one, and point-in-time queries returned the correct historical and current values._
